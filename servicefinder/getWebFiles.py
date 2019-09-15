@@ -8,6 +8,7 @@ def searchWebFiles(m, dirPath):
     htmls = {}
     phps = {}
     jss = {}
+    asps = {}
     cgis = {}
     for dirName, subdirs, files in os.walk(dirPath):
         for f in files:
@@ -27,12 +28,18 @@ def searchWebFiles(m, dirPath):
                     jss[dirName].append(f)
                 else:
                     jss[dirName] = [f]
-            elif m.id_filename(fPath) == 'application/x-executable':
+            elif f[-4:] == '.asp':
+                if dirName in asps:
+                    asps[dirName].append(f)
+                else:
+                    asps[dirName] = [f]
+            #elif m.id_filename(fPath) == 'application/x-executable': --> too many false positives
+            elif f[-4:] == '.cgi' or f[-5:] == '.fcgi':
                 if dirName in cgis:
                     cgis[dirName].append(f)
                 else:
                     cgis[dirName] = [f]
-    mapper = {'html':htmls, 'php':phps, 'js':jss, 'cgi':cgis}
+    mapper = {'html':htmls, 'php':phps, 'js':jss, 'asp':asps, 'cgi':cgis}
     return (dirPath, mapper)
 
 if __name__ == "__main__":

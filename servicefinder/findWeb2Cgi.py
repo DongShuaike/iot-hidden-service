@@ -1,6 +1,8 @@
 import os, json
 from config import Config
 import re
+
+types = ['html', 'js', 'php', 'asp']
 """
 The form of webContents is like:
 {
@@ -19,7 +21,7 @@ The form of webContents is like:
 """
 def getHtml2Cgi(webContents, dirPath):
     print('dirPath', dirPath)
-    mapping = {'html':{}, 'js':{}, 'php':{}}
+    mapping = {'html':{}, 'js':{}, 'php':{}, 'asp':{}}
     """
     The form of mapping is like:
     {
@@ -41,17 +43,18 @@ def getHtml2Cgi(webContents, dirPath):
             #TODO: deal with <form action=/apply.cgi
         return occurs
 
-    for k in webContents[dirPath]['html']:
-        if not k in mapping['html']:
-            mapping['html'][k]={}
-        for f in webContents[dirPath]['html'][k]:
-            fPath = os.path.join(k,f)
-            try:
-                data = open(fPath,'r').read().strip()
-                occurs = naiveSearch(data, [r'"([^"]*\.cgi).*"', r'<action="(.*)"\s', r'<form action=(.*\.cgi)'])
-                mapping['html'][k][f] = occurs
-            except Exception:
-                mapping['html'][k][f] = []
+    for tp in types:
+        for k in webContents[dirPath][tp]:
+            if not k in mapping[tp]:
+                mapping[tp][k]={}
+            for f in webContents[dirPath][tp][k]:
+                fPath = os.path.join(k,f)
+                try:
+                    data = open(fPath,'r').read().strip()
+                    occurs = naiveSearch(data, [r'"([^"]*\.cgi).*"', r'<action="(.*)"\s', r'<form action=(.*\.cgi)'])
+                    mapping[tp][k][f] = occurs
+                except Exception:
+                    mapping[tp][k][f] = []
 
     return mapping
 
@@ -65,24 +68,25 @@ def filterUnusedCgi(webContents, mappings, dirPath):
     }
     """
     marked_kf = {}
-    for k in mappings[dirPath]['html']:
-        for f in mappings[dirPath]['html'][k]:
-            for k1 in webContents[dirPath]['cgi']:
-                for f1 in webContents[dirPath]['cgi'][k1]:
-                    if f1 == f:
-                        if not k1 in marked_kf:
-                            marked_kf[k1] = [f1]
-                        else:
-                            marked_kf[k1].append(f1)
-                        break
-    for k in webContents[dirPath]['cgi']:
-        unusedCgis[k] = []
-        if not k in marked_kf:
-            unusedCgis[k] = webContents[dirPath]['cgi'][k]
-        else:
-            for f in webContents[dirPath]['cgi'][k]:
-                if not f in marked_kf[k]:
-                    unusedCgis[k].append(f)
+    for tp in types:
+        for k in mappings[dirPath][tp]:
+            for f in mappings[dirPath][tp][k]:
+                for k1 in webContents[dirPath]['cgi']:
+                    for f1 in webContents[dirPath]['cgi'][k1]:
+                        if f1 == f:
+                            if not k1 in marked_kf:
+                                marked_kf[k1] = [f1]
+                            else:
+                                marked_kf[k1].append(f1)
+                            break
+        for k in webContents[dirPath]['cgi']:
+            unusedCgis[k] = []
+            if not k in marked_kf:
+                unusedCgis[k] = webContents[dirPath]['cgi'][k]
+            else:
+                for f in webContents[dirPath]['cgi'][k]:
+                    if not f in marked_kf[k]:
+                        unusedCgis[k].append(f)
     return unusedCgis
 
 
