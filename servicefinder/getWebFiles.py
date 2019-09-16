@@ -13,12 +13,14 @@ def searchWebFiles(m, dirPath):
     for dirName, subdirs, files in os.walk(dirPath):
         for f in files:
             fPath = os.path.join(dirName, f)
-            if m.id_filename(fPath) == 'text/html':
+            #if m.id_filename(fPath) == 'text/html':
+            if fPath[-5:] == '.html' or fPath[-4:] == '.htm':
                 if dirName in htmls:
                     htmls[dirName].append(f)
                 else:
                     htmls[dirName] = [f]
-            elif m.id_filename(fPath) == 'text/x-php':
+            #elif m.id_filename(fPath) == 'text/x-php':
+            elif fPath[-4:] == '.php':
                 if dirName in phps:
                     phps[dirName].append(f)
                 else:

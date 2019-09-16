@@ -19,7 +19,7 @@ The form of webContents is like:
     },
 }
 """
-def getHtml2Cgi(webContents, dirPath):
+def getWeb2Cgi(webContents, dirPath):
     print('dirPath', dirPath)
     mapping = {'html':{}, 'js':{}, 'php':{}, 'asp':{}}
     """
@@ -70,24 +70,25 @@ def filterUnusedCgi(webContents, mappings, dirPath):
     marked_kf = {}
     for tp in types:
         for k in mappings[dirPath][tp]:
-            for f in mappings[dirPath][tp][k]:
-                for k1 in webContents[dirPath]['cgi']:
-                    for f1 in webContents[dirPath]['cgi'][k1]:
-                        if f1 == f:
-                            if not k1 in marked_kf:
-                                marked_kf[k1] = [f1]
-                            else:
-                                marked_kf[k1].append(f1)
-                            break
-        for k in webContents[dirPath]['cgi']:
-            unusedCgis[k] = []
-            if not k in marked_kf:
-                unusedCgis[k] = webContents[dirPath]['cgi'][k]
-            else:
-                for f in webContents[dirPath]['cgi'][k]:
-                    if not f in marked_kf[k]:
-                        unusedCgis[k].append(f)
-    return unusedCgis
+            for l in mappings[dirPath][tp][k]:
+                for f in mappings[dirPath][tp][k][l]:
+                    for k1 in webContents[dirPath]['cgi']:
+                        for f1 in webContents[dirPath]['cgi'][k1]:
+                            if f1 == f:
+                                if not k1 in marked_kf:
+                                    marked_kf[k1] = [f1]
+                                else:
+                                    marked_kf[k1].append(f1)
+
+    for k in webContents[dirPath]['cgi']:
+        unusedCgis[k] = []
+        if not k in marked_kf:
+            unusedCgis[k] = webContents[dirPath]['cgi'][k]
+        else:
+            for f in webContents[dirPath]['cgi'][k]:
+                if not f in marked_kf[k]:
+                    unusedCgis[k].append(f)
+    return marked_kf, unusedCgis
 
 
 if __name__ == "__main__":
@@ -96,15 +97,19 @@ if __name__ == "__main__":
     webContentsPath = cfg.webContentsPath
     webContents = json.loads(open(webContentsPath,'r').readline().strip())
     for rootPath in webContents:
-        mapping = getHtml2Cgi(webContents, rootPath)
+        mapping = getWeb2Cgi(webContents, rootPath)
         mappings[rootPath] = mapping
-    with open(cfg.html2cgiPath,'w') as fp:
+    with open(cfg.web2cgiPath,'w') as fp:
         fp.write(json.dumps(mappings))
 
     unusedCgis = {}
+    markeds = {}
     for rootPath in webContents:
-        unused = filterUnusedCgi(webContents, mappings, rootPath)
+        marked, unused = filterUnusedCgi(webContents, mappings, rootPath)
+        markeds[rootPath] = marked
         unusedCgis[rootPath] = unused
+    with open('/home/dsk/PycharmProjects/iot-hidden-service/results/marked','w') as fp:
+        fp.write(json.dumps(markeds))
     with open(cfg.unusedCgisPath, 'w') as fp:
         fp.write(json.dumps(unusedCgis))
 

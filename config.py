@@ -6,6 +6,6 @@ class Config:
         self.fileListPath = self.resultPath+'/fileList' #filePath recording all downloaded files
         self.unixListPath = self.resultPath+'/unixList'
         self.webContentsPath = self.resultPath+'/webContents' # store all web-related file mappings
-        self.html2cgiPath = self.resultPath+'/html2cgi'
+        self.web2cgiPath = self.resultPath+'/web2cgi'
         self.unusedCgisPath = self.resultPath+'/unusedCgis'
         self.vendors = ['DLink', 'netgear', 'tplink']
