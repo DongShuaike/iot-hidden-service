@@ -3,14 +3,22 @@ from config import Config
 import re
 
 types = ['html', 'js', 'php', 'asp']
+global_pattern = re.compile('([^/\'\"=]*\.cgi).*[\'\"&]')
+
 """
 The form of webContents is like:
 {
 'dirPath':
     {'html':
         {
-        '/a/b/c':['a.html','b.html',...],
-            'c/d/e':['c.html'],
+        '/a/b/c':
+        [
+            'a.html','b.html',...
+        ],
+        'c/d/e':
+        [
+            'c.html'
+        ],
         },
      'js':
         {
@@ -41,6 +49,7 @@ def getWeb2Cgi(webContents, dirPath):
             occurs.extend(re.findall(pattern, data))
             #TODO: deal with <action="/cgi-bin/luci">, no extension name
             #TODO: deal with <form action=/apply.cgi
+            #TODO: deal with <action="/cgi-bin/cgi_system.cgi">
         return occurs
 
     for tp in types:
@@ -51,7 +60,9 @@ def getWeb2Cgi(webContents, dirPath):
                 fPath = os.path.join(k,f)
                 try:
                     data = open(fPath,'r').read().strip()
-                    occurs = naiveSearch(data, [r'"([^"]*\.cgi).*"', r'<action="(.*)"\s', r'<form action=(.*\.cgi)'])
+                    #occurs = naiveSearch(data, [r'"([^/"]*\.cgi).*"', r'<action="(.*)"\s',
+                    #                            r'<form action=(.*\.cgi)', r'/([^/"]*\.cgi).*"'])
+                    occurs = naiveSearch(data, [global_pattern])
                     mapping[tp][k][f] = occurs
                 except Exception:
                     mapping[tp][k][f] = []
@@ -59,7 +70,47 @@ def getWeb2Cgi(webContents, dirPath):
     return mapping
 
 def filterUnusedCgi(webContents, mappings, dirPath):
-    unusedCgis = {}
+    def findUnused(targets, cgis):
+        unused = []
+        for k in cgis:
+            for f in cgis[k]:
+                if f not in targets:
+                    unused.append(f)
+        return unused
+    """
+    The form of webContents is like:
+    {
+    'dirPath':
+        {'html':
+            {
+            '/a/b/c':
+            [
+                'a.html','b.html',...
+            ],
+            'c/d/e':
+            [
+                'c.html'
+            ],
+            },
+        },
+    }
+    """
+    """
+    The form of mappings is like:
+    {
+        dirPath:
+        {
+            'html':
+            {
+                '/a/b/c':
+                {
+                    'a.html':[cgi1, cgi2]
+                    'b.html':[]
+                }
+            }
+        }
+    }
+    """
     """
     The form of unusedCgis is
     {
@@ -67,29 +118,16 @@ def filterUnusedCgi(webContents, mappings, dirPath):
         '/d/e':[cgi3]
     }
     """
-    marked_kf = {}
+    cgis = webContents[dirPath]['cgi']
+    lst = []
     for tp in types:
         for k in mappings[dirPath][tp]:
             for l in mappings[dirPath][tp][k]:
-                for f in mappings[dirPath][tp][k][l]:
-                    for k1 in webContents[dirPath]['cgi']:
-                        for f1 in webContents[dirPath]['cgi'][k1]:
-                            if f1 == f:
-                                if not k1 in marked_kf:
-                                    marked_kf[k1] = [f1]
-                                else:
-                                    marked_kf[k1].append(f1)
-
-    for k in webContents[dirPath]['cgi']:
-        unusedCgis[k] = []
-        if not k in marked_kf:
-            unusedCgis[k] = webContents[dirPath]['cgi'][k]
-        else:
-            for f in webContents[dirPath]['cgi'][k]:
-                if not f in marked_kf[k]:
-                    unusedCgis[k].append(f)
-    return marked_kf, unusedCgis
-
+                lst.extend(mappings[dirPath][tp][k][l])
+    if dirPath == "/home/dsk/Documents/Experiments/firmware/DLink/DAP-1562__1150__Firmware (1.00)/dap1562_FW_100/_dap1562_FW_100.bin.extracted/squashfs-root":
+        print('lst', lst)
+    unused = findUnused(lst, cgis)
+    return unused
 
 if __name__ == "__main__":
     mappings = {}
@@ -105,11 +143,8 @@ if __name__ == "__main__":
     unusedCgis = {}
     markeds = {}
     for rootPath in webContents:
-        marked, unused = filterUnusedCgi(webContents, mappings, rootPath)
-        markeds[rootPath] = marked
+        unused = filterUnusedCgi(webContents, mappings, rootPath)
         unusedCgis[rootPath] = unused
-    with open('/home/dsk/PycharmProjects/iot-hidden-service/results/marked','w') as fp:
-        fp.write(json.dumps(markeds))
     with open(cfg.unusedCgisPath, 'w') as fp:
         fp.write(json.dumps(unusedCgis))
 
